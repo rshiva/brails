@@ -6,6 +6,10 @@ FactoryGirl.define do
     query 'What is Ruby?'
     question_type "Hard"
     association :bonus_round
-    association :topic
+    association :content
+    after(:build) do |question| 
+      FactoryGirl.create(:correct, :question => question)
+      2.times {|i| FactoryGirl.create(:incorrect, :question => question)}
+    end
   end
 end

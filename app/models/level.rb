@@ -16,10 +16,12 @@ class Level
   validates :level_number, :numericality => {:only_integer => true,  :greater_than => 0 }
   
   # Use counter_cache
-  def calculate_cookies_count
-    topics.includes(:questions).inject(0) do |count, topic|
-      count + topic.questions.inject(0) do |count, question|
-        count + H_COOKIES[question.question_type]
+  def calculate_coins_count
+    topics.includes(:contents).inject(0) do |count, topic|
+      count + topic.contents.inject(0) do |count, content|
+        count + content.questions.inject(0) do |count, question|
+          count + H_COOKIES[question.question_type]
+	end
       end
     end
   end

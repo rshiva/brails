@@ -16,11 +16,9 @@ describe Topic do
   context 'associations' do
     it { should belong_to(:level)}
     it { should have_many(:contents).with_dependent(:destroy)}
-    it { should have_many(:questions).with_dependent(:destroy)}
   end
 
   context "Nested attributes" do
     it { should accept_nested_attributes_for(:contents)}
-    it { should accept_nested_attributes_for(:questions)}
   end
 end

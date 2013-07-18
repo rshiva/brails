@@ -8,15 +8,12 @@ class Topic
   slug :title
 
   #validation
-  validates :title, :description, :level_id, :presence => true
+#  validates :title, :description, :level_id, :presence => true
   attr_accessible :title,  :description, :contents_attributes, :questions_attributes, :level_id
 
   belongs_to :level
-  has_many :contents, dependent: :destroy
-  has_many :questions, dependent: :destroy
+  has_many :contents, dependent: :destroy, order: 'sq_no ASC'
   has_many :attempts
   accepts_nested_attributes_for :contents, allow_destroy: true
-  accepts_nested_attributes_for :questions, allow_destroy: true
-#  accepts_nested_attributes_for :options, allow_destroy: true
 end
 

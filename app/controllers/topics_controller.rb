@@ -1,6 +1,7 @@
 class TopicsController < ApplicationController
-  before_filter :load_topic, :only => [:edit, :update, :take_test, :destroy, :show] 
-  load_and_authorize_resource
+  before_filter :authenticate_user!, :except => :show
+  before_filter :load_topic, :only => [:edit, :update, :destroy, :show] 
+  load_and_authorize_resource :topic, :except => :show
 
   def index
     @level = Level.find(params[:level_id])
@@ -14,8 +15,9 @@ class TopicsController < ApplicationController
   def new
     @level = Level.find(params[:level_id])
     @topic = @level.topics.build
-    @topic.contents.build
-    @topic.questions.build
+#    @content = @topic.contents.build
+#    question = @content.questions.build
+#    question.options.build
     render layout: 'admin'
   end
 
@@ -44,34 +46,31 @@ class TopicsController < ApplicationController
     end
   end
 
-  def take_test
-    @questions = @topic.questions
-  end
-
   def attempt_question
     @question = Question.find(params[:question_id])
     @answer = @question.options.where(:_id => params["question"]['options']).try(:first) if params['question'].present?
-    @attempt = Attempt.where(:user => current_user, :question => @question, :topic => @question.topic).first
-    @attempt = Attempt.create(:user => current_user, :question => @question, :topic => @question.topic) if @attempt.nil? 
-    @attempt.save
-    if @answer.is_valid and @attempt.count == 0
-      @attempt.update_attributes({solved: true, cookies: H_COOKIES[@question.question_type]})
-    elsif @answer.is_valid and @attempt.count > 0
-      cookies = (H_COOKIES[@question.question_type] / @attempt.count ).round
-      @attempt.update_attributes({solved: true, cookies: cookies})
+    @attempt = Attempt.find_or_create_by(:user => current_user, :question => @question, :topic => @question.content.topic)
+    if @answer.is_valid and @attempt.increase_count == 0
+      @attempt.update_attributes({solved: true, coins: H_COOKIES[@question.question_type]})
+    elsif @answer.is_valid and @attempt.increase_count > 0
+      coins = (H_COOKIES[@question.question_type] / @attempt.increase_count ).round
+      @attempt.update_attributes({solved: true, coins: coins})
     else
-      @attempt.update_attributes({count: @attempt.count + 1})
+      @attempt.inc(:increase_count, 1)
     end
   end
 
   def destroy
     @topic.destroy
+    redirect_to level_topics_path(@level)
   end
 
   private
   def load_topic
     @topic = Topic.find(params[:id])
-    @level = Level.find(params[:level_id])
+    if params[:level_id] != nil
+      @level = Level.find(params[:level_id])
+    end
   end
 
 end

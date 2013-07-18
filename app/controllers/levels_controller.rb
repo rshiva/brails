@@ -1,17 +1,20 @@
 class LevelsController < ApplicationController
-  load_and_authorize_resource
+  before_filter :authenticate_user!, :except => [:index, :show]
+  load_and_authorize_resource :level, :except => [:index, :show]
+ 
 
   def index
-    @levels = Level.all
+    @levels = Level.all.order_by("level_number ASC")
   end
 
   def levels_list
-    @levels = Level.all
+    @levels = Level.all.order_by("level_number ASC")
   end
 
   def show
+    @count = 0
     @level = Level.find(params[:id])
-    @level_cookies = calculate_cookies(@level.id)
+    @bonus = @level.bonus_round
     @topics = @level.topics
   end
 
@@ -59,18 +62,28 @@ class LevelsController < ApplicationController
     end
   end
 
-  def calculate_cookies(level_id)
-    level = Level.find_by(:id => level_id)    
-    level_cookies = 0
-    topics = level.topics
-    topics.each do |topic|
-      questions = topic.questions
-      topic_cookies = 0
-      questions.each do |question|
-        topic_cookies = topic_cookies + H_COOKIES[question.question_type]
-      end
-      level_cookies = level_cookies + topic_cookies          
+  def attempt_bonus_question
+    @question = Question.find(params[:question_id])
+    @answer = @question.options.where(:_id => params["question"]['options']).try(:first) if params['question'].present?
+    @attempt = Attempt.find_or_create_by(:user => current_user, :question => @question)
+    if @answer.is_valid and @attempt.increase_count == 0
+      @attempt.update_attributes({solved: true, coins: H_COOKIES[@question.question_type]})
+    elsif @answer.is_valid and @attempt.increase_count > 0
+      coins = (H_COOKIES[@question.question_type] / @attempt.increase_count ).round
+      @attempt.update_attributes({solved: true, coins: coins})
+    else
+      @attempt.inc(:increase_count, 1)
     end
-    return level_cookies
+  end
+
+  def calculate_coins(level_id)
+    @level = Level.find_by(:id => level_id)
+    @level.topics.includes(:contents).inject(0) do |count, topic|
+      count + topic.contents.inject(0) do |count, content|
+        count + content.questions.inject(0) do |count, question|
+          return count + H_COOKIES[question.question_type]
+	      end
+      end
+    end
   end
 end
